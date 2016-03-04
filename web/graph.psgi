@@ -279,21 +279,12 @@ HTML
    }
    if ($req->param('func')) {
       $config{functions} = [ split(/,/, $req->param('func')) ]
-
    }
 
-   my $get = '?';
-   if ($req->param('fmt')) {
-      $get .= 'fmt=' . $req->param('fmt')
-   }
    my $func = '';
    if ($req->param('func')) {
-      $get .= '&func=' . $req->param('func');
       $func = '?func=' . $req->param('func');
    }
-   $html =~ s/###INLINE###/$get/
-      if $get;
-
    $html =~ s/###FUNC###/$func/;
    $res->body($html);
 
