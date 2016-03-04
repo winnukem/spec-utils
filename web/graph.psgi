@@ -203,103 +203,69 @@ my $image = sub {
 my $page = sub {
    my $env = shift;
    my %original = (format => $config{format}, functions => $config{functions});
-   my $html_svg = <<'HTML';
-<!DOCTYPE html>
-<html>
-   <head>
-      <meta charset="UTF-8">
-      <style type="text/css">
-         body {
-            overflow: hidden;
-         }
-      </style>
-      <title>Functions graph</title>
-   </head>
-
-   <body>
-      ###INLINE###
-   </body>
-   <script>
-var sx = 0, sy = 0;
-function move(e) {
-   var e = window.event || e;
-   var ww = window.innerWidth;
-   var wh = window.innerHeight;
-   var y = e.clientY;
-   var x = e.clientX;
-   var xp = x / ww;
-   var yp = y / wh;
-
-   if (xp <= 0.15) {
-      sx = -10
-   } else if (xp >= 0.85) {
-      sx = 10
-   } else {
-      sx = 0
-   }
-
-   if (yp <= 0.15) {
-      sy = -10
-   } else if (yp >= 0.85) {
-      sy = 10
-   } else {
-      sy = 0
-   }
-
-   return false;
-}
-
-var c = 1;
-var g = document.getElementById("graph0");
-
-function change(e) {
-   var e = window.event || e;
-
-   if (0.1 <= c && c <= 1) {
-      if (e != null) {
-         var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.deltaY || -e.detail)));
-         c += delta * 0.1;
-      }
-      g.transform.baseVal.getItem(0).setScale(c, c);
-   } else {
-      if (c < 0.1) {
-         c = 0.1
-      } else if (c > 1) {
-         c = 1
-      }
-      change(null)
-   }
-   return false;
-}
-
-window.DOMMouseScroll = window.onwheel = window.onmousewheel = document.onmousewheel = change;
-
-window.onload = function () {
-   document.addEventListener('mousemove', move, false);
-   setInterval(
-      function(){
-         if (sx != 0 || sy != 0) {
-            window.scrollBy(sx, sy)
-         }
-      }, 10);
-}
-   </script>
-</html>
-HTML
    my $html = <<'HTML';
 <!DOCTYPE html>
 <html>
    <head>
       <meta charset="UTF-8">
       <title>Functions graph</title>
+
+      <!--<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" /> -->
+      <link rel="stylesheet" href="http://openlayers.org/en/v3.14.2/css/ol.css" type="text/css">
+      <script src="http://openlayers.org/en/v3.14.2/build/ol.js" type="text/javascript"></script>
+
+      <style>
+         #map {
+            width: 100%;
+            height: 100%;
+         };
+         html, body {
+            height: 100%;
+            margin: 0px;
+         }
+      </style>
    </head>
 
    <body>
-   <img src="/graph/image###INLINE###">
+      <div id="map"></div>
+
+      <script>
+         var IMG_URL = "/graph/image###FUNC###";
+         var img = new Image();
+         var graph;
+         img.onload = function() {
+            var extent = [0, 0, img.width, img.height];
+            var projection = new ol.proj.Projection({
+               code: 'graph-image',
+               units: 'pixels',
+               extent: extent
+            });
+
+            var graph = new ol.Map({
+               layers: [
+                  new ol.layer.Image({
+                     source: new ol.source.ImageStatic({
+                        url: IMG_URL,
+                        projection: projection,
+                        imageExtent: extent
+                     })
+                  })
+               ],
+               target: 'map',
+               view: new ol.View({
+                  projection: projection,
+                  center: ol.extent.getCenter(extent),
+                  zoom: 2,
+                  maxZoom: 8
+               })
+            });
+         }
+         img.src = IMG_URL;
+      </script>
    </body>
+
 </html>
 HTML
-
 
    my $req = Plack::Request->new($env);
    my $res = $req->new_response(200);
@@ -313,30 +279,22 @@ HTML
    }
    if ($req->param('func')) {
       $config{functions} = [ split(/,/, $req->param('func')) ]
+
    }
 
-   if ($config{format} eq 'svg') {
-      my $filename = $config{out} . '.' . $config{format};
-
-      return return_500
-         if generate_image('page');
-
-      my $svg = read_file($filename);
-      unlink $filename;
-      $html_svg =~ s/###INLINE###/$svg/;
-      $html = $html_svg;
-   } else {
-      my $get = '?';
-      if ($req->param('fmt')) {
-         $get .= 'fmt=' . $req->param('fmt')
-      }
-      if ($req->param('func')) {
-         $get .= '&func=' . $req->param('func')
-      }
-      $html =~ s/###INLINE###/$get/
-         if $get
+   my $get = '?';
+   if ($req->param('fmt')) {
+      $get .= 'fmt=' . $req->param('fmt')
    }
+   my $func = '';
+   if ($req->param('func')) {
+      $get .= '&func=' . $req->param('func');
+      $func = '?func=' . $req->param('func');
+   }
+   $html =~ s/###INLINE###/$get/
+      if $get;
 
+   $html =~ s/###FUNC###/$func/;
    $res->body($html);
 
    $config{format} = $original{format};
