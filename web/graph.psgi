@@ -210,7 +210,6 @@ my $page = sub {
       <meta charset="UTF-8">
       <title>Functions graph</title>
 
-      <!--<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" /> -->
       <link rel="stylesheet" href="http://openlayers.org/en/v3.14.2/css/ol.css" type="text/css">
       <script src="http://openlayers.org/en/v3.14.2/build/ol.js" type="text/javascript"></script>
 
